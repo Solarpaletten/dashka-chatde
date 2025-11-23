@@ -17,6 +17,7 @@ const DualTranslator: React.FC = () => {
     performTranslation
   } = useTranslator();
 
+
   const dialects = ['de-DE', 'ru-RU'];
   const dialectNames = {
     'de-DE': '🇩🇪 Deutsch',
@@ -26,10 +27,13 @@ const DualTranslator: React.FC = () => {
   const [dialect, setDialect] = useState(recognitionLang);
   const [dialectIndex, setDialectIndex] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
-  const [showRoomJoin, setShowRoomJoin] = useState(false); // Управление видимостью RoomJoin
+  const [showRoomJoin, setShowRoomJoin] = useState(false);
+
+
+
   const [roomCode, setRoomCode] = useState('');
   const [username, setUsername] = useState('');
-  const [isWakingUp, setIsWakingUp] = useState(false); 
+  const [isWakingUp, setIsWakingUp] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Array<{
     speaker: string;
     lang: string;
@@ -114,15 +118,6 @@ const DualTranslator: React.FC = () => {
     if (rightPanelRef.current) rightPanelRef.current.scrollTop = rightPanelRef.current.scrollHeight;
   }, [translatedText]);
 
-  const pasteToOriginal = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      setOriginalText(text);
-      performTranslation(text);
-    } catch {
-      alert('Ошибка вставки');
-    }
-  };
 
   const wakeUpAPI = async () => {
     setIsWakingUp(true);
@@ -148,12 +143,35 @@ const DualTranslator: React.FC = () => {
     }
   };
 
+
+
+  const pasteToOriginal = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setOriginalText(text);
+    } catch (err) {
+      console.error("Не удалось вставить текст:", err);
+    }
+  };
+
+
+  const clearAll = () => {
+    setOriginalText("");   // очистить оригинал
+    performTranslation(""); // очистить перевод (правильно!)
+    if (isRecording) toggleRecording(); // остановить запись
+  };
+
+  const stopRecording = () => {
+    if (isRecording) toggleRecording();
+  };
+
+
   return (
     <>
       {!isConnected && showRoomJoin && (
-        <RoomJoin 
-          onJoin={handleJoinRoom} 
-          onClose={() => setShowRoomJoin(false)} 
+        <RoomJoin
+          onJoin={handleJoinRoom}
+          onClose={() => setShowRoomJoin(false)}
         />
       )}
       <div className="w-full h-screen flex flex-col bg-gradient-to-br from-purple-600 via-blue-600 to-teal-600">
@@ -227,21 +245,55 @@ const DualTranslator: React.FC = () => {
         <main className="flex-1 flex gap-4 px-6 pb-6">
           {/* Левая панель - Оригинал */}
           <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-2xl p-6 flex flex-col">
+
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-white text-xl font-semibold">🗣️ Оригинал</h2>
-              <div className="flex gap-2">
+
+              <h2 className="text-white text-xl font-semibold flex items-center gap-2">
+                <span>🇷🇺</span>
+                <span>Оригинал</span>
+              </h2>
+
+              <div className="flex items-center gap-2">
+
+                {/* Вставить */}
                 <button
-                  onClick={pasteToOriginal}
-                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded-lg text-white text-sm"
-                >
-                  📋 Вставить
-                </button>
-                <button
-                  onClick={() => copyToClipboard(originalText, 'Оригинал')}
+                  onClick={() => navigator.clipboard.readText().then(t => setOriginalText(t))}
                   className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-white text-sm"
+                >
+                  📥 Вставить
+                </button>
+
+                {/* Копировать */}
+                <button
+                  onClick={() => navigator.clipboard.writeText(originalText)}
+                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-white text-sm"
+                  disabled={!originalText}
                 >
                   📋 Копировать
                 </button>
+
+                {/* Стереть всё */}
+                <button
+                  onClick={() => {
+                    setOriginalText("");
+                    setTranslatedText("");
+                    if (isRecording) toggleRecording(); // остановить запись
+                  }}
+                  className="px-3 py-1 bg-red-500/70 hover:bg-red-600 rounded-lg text-white text-sm"
+                >
+                  🗑️ Стереть
+                </button>
+
+                {/* Стоп */}
+                <button
+                  onClick={() => {
+                    if (isRecording) toggleRecording();
+                  }}
+                  className="px-3 py-1 bg-yellow-500/70 hover:bg-yellow-600 rounded-lg text-white text-sm"
+                >
+                  ⏹️ Стоп
+                </button>
+
               </div>
             </div>
             <textarea
@@ -261,10 +313,10 @@ const DualTranslator: React.FC = () => {
               placeholder="Начните говорить или вставьте текст..."
               className="flex-1 bg-white/5 rounded-xl p-4 text-white text-lg leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-white/50"
             />
-          </div>
+          </div >
 
           {/* Правая панель - Перевод */}
-          <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-2xl p-6 flex flex-col">
+          < div className="flex-1 bg-white/10 backdrop-blur-sm rounded-2xl p-6 flex flex-col" >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-white text-xl font-semibold">🌐 Перевод</h2>
               <button
@@ -279,11 +331,11 @@ const DualTranslator: React.FC = () => {
                 {translatedText || 'Перевод появится здесь...'}
               </p>
             </div>
-          </div>
-        </main>
+          </div >
+        </main >
 
         {/* Нижняя панель - История */}
-        <footer className="bg-white/10 backdrop-blur-sm p-6 text-white">
+        < footer className="bg-white/10 backdrop-blur-sm p-6 text-white" >
           <h3 className="font-semibold mb-3 text-lg">🕐 История разговора</h3>
           <div className="max-h-48 overflow-y-auto space-y-3 pr-2">
             {conversationHistory.length === 0 ? (
@@ -303,8 +355,8 @@ const DualTranslator: React.FC = () => {
               ))
             )}
           </div>
-        </footer>
-      </div>
+        </footer >
+      </div >
     </>
   );
 };
